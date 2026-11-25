@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>แบบประเมิน SSI Prevention</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    body { background-color: #f7f2ec; color: #967259; font-family: 'Kanit', sans-serif; }
+    .glass-card { background: #ffffff; border-radius: 24px; box-shadow: 0 10px 40px -10px rgba(150, 114, 89, 0.15); border: 1px solid rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px); transition: all 0.3s ease; }
+    .glass-card:hover { box-shadow: 0 20px 50px -12px rgba(150, 114, 89, 0.25); }
+    .btn-primary { background: linear-gradient(135deg, #967259 0%, #b08d74 100%); color: white; transition: all 0.3s ease; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(150, 114, 89, 0.4); }
+    .btn-secondary { background: #ffffff; border: 2px solid #e6dcd5; color: #967259; }
+    .btn-secondary:hover { background: #faf7f5; border-color: #967259; }
+    .form-input { background-color: #fdfbf9; border: 1px solid #e6dcd5; color: #967259; border-radius: 12px; transition: all 0.2s; }
+    .form-input:focus { outline: none; border-color: #967259; box-shadow: 0 0 0 3px rgba(150, 114, 89, 0.1); }
+    .toggle-container { background-color: #f3ece6; border-radius: 12px; padding: 4px; display: inline-flex; position: relative; flex-wrap: wrap; justify-content: center; }
+    .toggle-btn { padding: 8px 16px; border-radius: 10px; font-size: 0.875rem; font-weight: 500; color: #967259; background: transparent; border: none; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; margin-bottom: 2px; }
+    .toggle-btn.active { background-color: #ffffff; color: #967259; box-shadow: 0 2px 8px rgba(150, 114, 89, 0.15); font-weight: 600; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #cbbcb3; border-radius: 4px; }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #967259; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .q-disabled { opacity: 0.5; pointer-events: none; }
+    div:where(.swal2-container) div:where(.swal2-popup) {
+      border-radius: 24px !important;
+      font-family: 'Kanit', sans-serif !important;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 20px 60px -10px rgba(150, 114, 89, 0.2);
+    }
+    /* Edit Table Styles */
+    .edit-input { border: 1px solid #967259; padding: 4px 8px; border-radius: 6px; width: 100%; font-size: 0.9em; }
+    .search-table th { background-color: #f3ece6; color: #967259; padding: 10px; text-align: left; border-bottom: 2px solid #e6dcd5; font-weight: 600; white-space: nowrap; position: sticky; top: 0; z-index: 20; }
+    .search-table td { padding: 10px; border-bottom: 1px solid #eee; color: #555; vertical-align: top; }
+    .search-table tr:hover { background-color: #faf7f5; }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+  <div id="loadingOverlay" class="fixed inset-0 bg-[#f7f2ec] z-50 flex flex-col items-center justify-center">
+    <div class="loader mb-4"></div>
+    <p class="text-xl font-medium animate-pulse">กำลังโหลดข้อมูล...</p>
+  </div>
+
+  <div class="max-w-4xl mx-auto space-y-6">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold mb-2"><i class="fa-solid fa-notes-medical mr-2"></i>SSI Prevention Audit</h1>
+      <p class="opacity-75">ระบบประเมินการปฏิบัติตามแนวทางการป้องกันการติดเชื้อ</p>
+    </div>
+
+    <!-- Step 1: Initial Selection -->
+    <div id="step1" class="glass-card p-8 text-center animate-fade-in">
+      <h2 class="text-2xl font-bold mb-6">เลือกแบบประเมินสำหรับ</h2>
+      <div class="flex justify-center flex-wrap gap-4" id="initToggleContainer"></div>
+    </div>
+
+    <!-- Step 2: Main Form -->
+    <div id="step2" class="hidden space-y-6">
+      
+      <!-- Top Actions Bar for OR/Joint Center Mode -->
+      <div id="orActionSection" class="flex justify-end hidden">
+         <button onclick="openSearchModal()" class="px-5 py-2 rounded-full border-2 border-[#967259] text-[#967259] bg-white hover:bg-[#967259] hover:text-white transition-all font-medium text-sm shadow-sm flex items-center">
+            <i class="fa-solid fa-magnifying-glass mr-2"></i>แก้ไขข้อมูล (ค้นหา HN)
+         </button>
+      </div>
+
+      <!-- Part 1: Unit Info (Only for Unit Mode) -->
+      <div id="unitInfoSection" class="glass-card p-6 hidden relative z-30">
+        <h3 class="text-xl font-bold mb-4 border-b border-[#e6dcd5] pb-2"><i class="fa-solid fa-hospital-user mr-2"></i>ส่วนที่ 1: ข้อมูลหน่วยงาน</h3>
+        <div class="relative">
+          <label class="block text-sm font-medium mb-1">หน่วยงาน (กรอกรหัส หรือ ชื่อ)</label>
+          <div class="relative">
+            <input type="text" id="unitSearchInput" class="form-input w-full p-3 pl-10" placeholder="พิมพ์รหัสหน่วยงาน..." autocomplete="off">
+            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input type="hidden" id="selectedUnitCode">
+            <input type="hidden" id="selectedUnitName">
+            <!-- Dropdown List -->
+            <ul id="unitSuggestions" class="absolute z-50 w-full bg-white border border-[#e6dcd5] rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto hidden"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Part 2: Patient Data Container -->
+      <div id="patientContainer" class="space-y-6"></div>
+
+      <div class="flex justify-center">
+        <button onclick="addPatientForm()" class="px-6 py-3 rounded-full border-2 border-[#967259] text-[#967259] hover:bg-[#967259] hover:text-white transition-colors font-medium">
+          <i class="fa-solid fa-plus mr-2"></i>เพิ่มข้อมูลผู้ป่วย
+        </button>
+      </div>
+
+      <!-- Submit Section -->
+      <div class="flex flex-col items-center justify-center mt-8">
+        <button onclick="submitData()" class="btn-primary w-full md:w-1/2 py-4 rounded-xl text-xl font-bold shadow-lg">
+          <i class="fa-solid fa-paper-plane mr-2"></i>ส่งข้อมูลแบบประเมิน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template: UNIT Patient Form -->
+  <template id="unitPatientTemplate">
+    <div class="patient-card glass-card p-6 relative animate-fade-in-up" data-mode="unit">
+      <button class="remove-patient absolute top-4 right-4 text-red-400 hover:text-red-600 transition"><i class="fa-solid fa-trash-can text-lg"></i></button>
+      <h3 class="text-xl font-bold mb-4 text-[#967259]"><i class="fa-solid fa-user-injured mr-2"></i>ผู้ป่วย <span class="patient-index"></span></h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div><label class="block text-sm font-medium mb-1">HN</label><input type="text" class="input-hn form-input w-full p-2.5"></div>
+        <div><label class="block text-sm font-medium mb-1">วันผ่าตัด</label><input type="date" class="input-date form-input w-full p-2.5"></div>
+        <div><label class="block text-sm font-medium mb-1">ประเภทแผล</label><select class="select-wound form-input w-full p-2.5"><option value="">-- เลือก --</option></select></div>
+      </div>
+
+      <div class="mb-6 text-center">
+        <label class="block text-sm font-medium mb-2">ระยะการประเมิน</label>
+        <div class="toggle-container phase-options"></div>
+      </div>
+
+      <div class="questions-container space-y-4 bg-[#fdfbf9] p-4 rounded-xl border border-[#efe8e1] hidden"></div>
+    </div>
+  </template>
+
+  <!-- Template: OR Patient Form -->
+  <template id="orPatientTemplate">
+    <div class="patient-card glass-card p-6 relative animate-fade-in-up" data-mode="or">
+      <button class="remove-patient absolute top-4 right-4 text-red-400 hover:text-red-600 transition"><i class="fa-solid fa-trash-can text-lg"></i></button>
+      <h3 class="text-xl font-bold mb-4 text-[#967259]"><i class="fa-solid fa-procedures mr-2"></i>Case ห้องผ่าตัด <span class="patient-index"></span></h3>
+      
+      <!-- EDIT: Changed from md:grid-cols-4 to md:grid-cols-5 to fit Specialty in the same row -->
+      <div class="grid-layout grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div><label class="block text-sm font-medium mb-1">HN</label><input type="text" class="input-hn form-input w-full p-2.5"></div>
+        <div><label class="block text-sm font-medium mb-1">วันผ่าตัด</label><input type="date" class="input-date form-input w-full p-2.5"></div>
+        <div><label class="block text-sm font-medium mb-1">ประเภทแผล</label><select class="select-wound form-input w-full p-2.5"><option value="">-- เลือก --</option></select></div>
+        <div><label class="block text-sm font-medium mb-1">OR No.</label><input type="text" class="input-orno form-input w-full p-2.5"></div>
+        <!-- Specialty Wrapper: Will be removed in JS for Joint Center and Cataract -->
+        <div class="specialty-wrapper"><label class="block text-sm font-medium mb-1">สาขาที่ผ่าตัด</label><select class="select-specialty form-input w-full p-2.5"><option value="">-- เลือก --</option></select></div>
+      </div>
+
+      <div class="mb-6 text-center">
+        <label class="block text-sm font-medium mb-2">แบบประเมินสำหรับ</label>
+        <div class="toggle-container phase-options"></div>
+      </div>
+
+      <div class="questions-container space-y-4 bg-[#fdfbf9] p-4 rounded-xl border border-[#efe8e1] hidden"></div>
+    </div>
+  </template>
+
+  <script>
+    // =====================================================================
+    // เชื่อมต่อ Apps Script ผ่าน API (แทน google.script.run)
+    // ใส่ URL ที่ลงท้ายด้วย /exec ของ deployment V5 ตรงนี้
+    // =====================================================================
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzn3WRTDzVFEUq5yV3hQFlTjFym3QgibQYuEkDcxx-Gl4SePkqv7_r9YYjXJ4JTgfgR1A/exec';
+
+    function callApi(fn, args) {
+      return fetch(API_URL, {
+        method: 'POST',
+        // ใช้ text/plain เพื่อไม่ให้ติด CORS preflight ของ Apps Script
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ fn: fn, args: args }),
+        redirect: 'follow'
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ (HTTP ' + res.status + ')');
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data.ok) throw new Error(data.error || 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์');
+        return data.result;
+      });
+    }
+
+    // จำลองรูปแบบ google.script.run เดิม เพื่อให้โค้ดส่วนอื่นไม่ต้องแก้
+    function makeRunner(onSuccess, onFailure) {
+      const runner = {
+        withSuccessHandler: function (fn) { return makeRunner(fn, onFailure); },
+        withFailureHandler: function (fn) { return makeRunner(onSuccess, fn); }
+      };
+      ['getInitialData', 'submitForm', 'searchORData', 'updateORData'].forEach(function (name) {
+        runner[name] = function () {
+          const args = Array.prototype.slice.call(arguments);
+          callApi(name, args).then(
+            function (result) { if (onSuccess) onSuccess(result); },
+            function (err) {
+              const e = (err instanceof Error) ? err : new Error(String(err));
+              if (e.message === 'Failed to fetch' || e.message === 'Load failed') {
+                e.message = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่';
+              }
+              if (onFailure) onFailure(e); else alert(e.message);
+            }
+          );
+        };
+      });
+      return runner;
+    }
+
+    window.google = { script: { run: makeRunner(null, null) } };
+
+    let GLOBAL_DATA = {};
+    let CURRENT_MODE = ""; 
+
+    window.onload = function() {
+      google.script.run
+        .withSuccessHandler(initApp)
+        .withFailureHandler(err => alert(err.message))
+        .getInitialData();
+    };
+
+    function initApp(data) {
+      GLOBAL_DATA = data;
+      document.getElementById('loadingOverlay').classList.add('hidden');
+      setupInitToggles();
+      setupUnitSearch(); 
+    }
+
+    function setupInitToggles() {
+      const container = document.getElementById('initToggleContainer');
+      container.innerHTML = '';
+      GLOBAL_DATA.dropdowns.initToggles.forEach(type => {
+        const btn = document.createElement('button');
+        btn.className = 'px-6 py-3 rounded-full border-2 border-[#e6dcd5] hover:border-[#967259] hover:bg-[#faf7f5] transition-all text-lg font-medium';
+        btn.textContent = type;
+        btn.onclick = () => selectMode(type, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function selectMode(type, btn) {
+      Array.from(btn.parentElement.children).forEach(b => {
+        b.classList.remove('bg-[#967259]', 'text-white', 'border-[#967259]');
+        b.classList.add('border-[#e6dcd5]', 'text-[#967259]');
+      });
+      btn.classList.remove('border-[#e6dcd5]', 'text-[#967259]');
+      btn.classList.add('bg-[#967259]', 'text-white', 'border-[#967259]');
+
+      // EDIT: เพิ่มเงื่อนไขสำหรับ "ศูนย์ข้อ" และ "ศูนย์ต้อกระจก"
+      if (type.includes("หน่วยงาน")) {
+        CURRENT_MODE = 'unit';
+        document.getElementById('unitInfoSection').classList.remove('hidden');
+        document.getElementById('orActionSection').classList.add('hidden');
+      } else if (type.includes("ศูนย์ข้อ")) {
+        CURRENT_MODE = 'joint_center';
+        document.getElementById('unitInfoSection').classList.add('hidden');
+        document.getElementById('orActionSection').classList.remove('hidden'); // Show Search like OR
+      } else if (type.includes("ต้อกระจก")) {
+        CURRENT_MODE = 'cataract_center';
+        document.getElementById('unitInfoSection').classList.add('hidden');
+        document.getElementById('orActionSection').classList.remove('hidden'); // Show Search like OR
+      } else {
+        CURRENT_MODE = 'or';
+        document.getElementById('unitInfoSection').classList.add('hidden');
+        document.getElementById('orActionSection').classList.remove('hidden');
+      }
+
+      document.getElementById('patientContainer').innerHTML = '';
+      document.getElementById('step2').classList.remove('hidden');
+      addPatientForm();
+      document.getElementById('step2').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // --- SEARCH & EDIT LOGIC ---
+    function openSearchModal() {
+        Swal.fire({
+            title: 'ค้นหา HN',
+            input: 'text',
+            inputPlaceholder: 'กรอกหมายเลข HN',
+            showCancelButton: true,
+            confirmButtonText: 'ค้นหา',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#967259',
+            background: '#ffffff',
+            customClass: { popup: 'rounded-3xl' },
+            preConfirm: (hn) => {
+                if (!hn) Swal.showValidationMessage('กรุณากรอก HN');
+                return hn;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                doSearch(result.value);
+            }
+        });
+    }
+
+    function doSearch(hn) {
+        Swal.fire({
+            title: 'กำลังค้นหา...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading(),
+            background: '#ffffff'
+        });
+
+        google.script.run
+            .withSuccessHandler(showSearchResults)
+            .withFailureHandler(e => Swal.fire('Error', e.message, 'error'))
+            .searchORData(hn);
+    }
+
+    function showSearchResults(rows) {
+        if (!rows || rows.length === 0) {
+            Swal.fire({ icon: 'info', title: 'ไม่พบข้อมูล', text: 'ไม่พบประวัติการประเมินของ HN นี้ใน Sheet ห้องผ่าตัด', confirmButtonColor: '#967259' });
+            return;
+        }
+
+        // Generate Table HTML
+        let html = `
+          <div class="overflow-x-auto max-h-[60vh] text-left border rounded-lg">
+             <table class="search-table w-full text-sm whitespace-nowrap min-w-[700px]"> <!-- min-w ensures table scrolling -->
+                <thead class="bg-[#f3ece6]">
+                    <tr>
+                        <th class="px-3 py-3">วันที่</th>
+                        <th class="px-3 py-3">HN</th>
+                        <th class="px-3 py-3">OR No.</th>
+                        <th class="px-3 py-3">สาขา</th>
+                        <th class="px-3 py-3">ประเภทแผล</th>
+                        <th class="px-3 py-3">ระยะ</th>
+                        <th class="text-right px-3 py-3">คะแนน</th>
+                        <th class="text-center px-3 py-3 sticky right-0 bg-[#f3ece6] z-10 shadow-l">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        rows.forEach(r => {
+            // Data indices: 0:Time, 1:Assessor, 2:OR, 3:OR, 4:HN, 5:Date, 6:Wound, 7:Phase, 8:Score
+            const d = r.data;
+            const specialty = d[20] || "-"; // เปลี่ยนจาก Index 16 เป็น Index 20
+            
+            html += `
+                <tr id="row-${r.rowIndex}" data-json='${JSON.stringify(r)}'>
+                    <td class="cell-date px-3 py-3">${d[5]}</td>
+                    <td class="cell-hn px-3 py-3">${d[4]}</td>
+                    <td class="cell-orno px-3 py-3">${d[2]}</td>
+                    <td class="cell-spec px-3 py-3">${specialty}</td>
+                    <td class="cell-wound px-3 py-3">${d[6]}</td>
+                    <td class="cell-phase px-3 py-3">${d[7]}</td>
+                    <td class="text-right font-bold text-[#967259] px-3 py-3">${d[8]}%</td>
+                    <td class="text-center space-x-2 px-3 py-3 sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
+                        <button onclick="toggleEditInfo(${r.rowIndex})" class="btn-edit-info text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition" title="แก้ไขข้อมูลทั่วไป"><i class="fa-solid fa-pen-to-square text-lg"></i></button>
+                        <button onclick="toggleEditAssessment(${r.rowIndex})" class="btn-edit-qs text-[#967259] hover:text-[#b08d74] p-2 rounded-full hover:bg-[#faf7f5] transition" title="แก้ไขการประเมิน"><i class="fa-solid fa-list-check text-lg"></i></button>
+                    </td>
+                </tr>
+                <tr id="edit-row-${r.rowIndex}" class="hidden bg-gray-50">
+                    <td colspan="8" class="p-0 border-b border-gray-200">
+                        <!-- Sticky container for edit form to be responsive on mobile inside scrolling table -->
+                        <div class="sticky left-0 w-full md:w-auto md:static bg-gray-50 p-4 whitespace-normal border-l-4 border-[#967259]" style="max-width: 85vw;">
+                             <div id="edit-container-${r.rowIndex}" class="space-y-4"></div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+
+        Swal.fire({
+            title: 'ผลการค้นหา',
+            html: html,
+            // Responsive width
+            width: 'auto', 
+            showConfirmButton: false,
+            showCloseButton: true,
+            background: '#ffffff',
+            customClass: { 
+                 popup: 'rounded-3xl w-11/12 max-w-5xl' 
+             }
+        });
+    }
+
+    function toggleEditInfo(rowIndex) {
+        const row = document.getElementById(`row-${rowIndex}`);
+        const data = JSON.parse(row.dataset.json).data;
+        const isEditing = row.classList.contains('editing');
+        const specialty = data[20] || ""; // เปลี่ยนเป็น Index 20
+
+        if (isEditing) {
+            // Cancel Edit: Revert HTML
+            row.classList.remove('editing');
+            row.querySelector('.cell-date').innerHTML = data[5];
+            row.querySelector('.cell-hn').innerHTML = data[4];
+            row.querySelector('.cell-orno').innerHTML = data[2];
+            row.querySelector('.cell-spec').innerHTML = specialty || "-";
+            row.querySelector('.cell-wound').innerHTML = data[6];
+            
+            // Restore Buttons
+            const btnCell = row.lastElementChild;
+            btnCell.innerHTML = `
+                <button onclick="toggleEditInfo(${rowIndex})" class="btn-edit-info text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition" title="แก้ไขข้อมูลทั่วไป"><i class="fa-solid fa-pen-to-square text-lg"></i></button>
+                <button onclick="toggleEditAssessment(${rowIndex})" class="btn-edit-qs text-[#967259] hover:text-[#b08d74] p-2 rounded-full hover:bg-[#faf7f5] transition" title="แก้ไขการประเมิน"><i class="fa-solid fa-list-check text-lg"></i></button>
+            `;
+        } else {
+            // Start Edit: Convert to Inputs
+            row.classList.add('editing');
+            
+            // Date Input (Convert DD-MM-YYYY to YYYY-MM-DD for input)
+            let dateVal = data[5];
+            if(dateVal.includes('-')) {
+                const p = dateVal.split('-');
+                if(p[0].length === 2) dateVal = `${p[2]}-${p[1]}-${p[0]}`;
+            }
+            
+            row.querySelector('.cell-date').innerHTML = `<input type="date" class="edit-input edit-date" value="${dateVal}">`;
+            row.querySelector('.cell-hn').innerHTML = `<input type="text" class="edit-input edit-hn bg-gray-100" value="${data[4]}" readonly>`;
+            row.querySelector('.cell-orno').innerHTML = `<input type="text" class="edit-input edit-orno" value="${data[2]}">`;
+            
+            // Specialty Select
+            let specOpt = '<option value="">-- เลือก --</option>';
+            if (GLOBAL_DATA.choices.specialties) {
+                specOpt += GLOBAL_DATA.choices.specialties.map(s => `<option value="${s}" ${s === specialty ? 'selected' : ''}>${s}</option>`).join('');
+            }
+            row.querySelector('.cell-spec').innerHTML = `<select class="edit-input edit-spec">${specOpt}</select>`;
+
+            // Wound Select
+            let woundOpt = GLOBAL_DATA.dropdowns.woundTypes.map(w => `<option value="${w}" ${w===data[6]?'selected':''}>${w}</option>`).join('');
+            row.querySelector('.cell-wound').innerHTML = `<select class="edit-input edit-wound">${woundOpt}</select>`;
+
+            // Actions: Save / Cancel
+            const btnCell = row.lastElementChild;
+            btnCell.innerHTML = `
+                <div class="flex items-center justify-center space-x-2">
+                    <button onclick="saveEdit(${rowIndex})" class="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50 transition" title="บันทึก"><i class="fa-solid fa-save text-lg"></i></button>
+                    <button onclick="toggleEditInfo(${rowIndex})" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition" title="ยกเลิก"><i class="fa-solid fa-times text-lg"></i></button>
+                </div>
+            `;
+        }
+    }
+
+    function toggleEditAssessment(rowIndex) {
+        const editRow = document.getElementById(`edit-row-${rowIndex}`);
+        const container = document.getElementById(`edit-container-${rowIndex}`);
+        const dataObj = JSON.parse(document.getElementById(`row-${rowIndex}`).dataset.json);
+        const data = dataObj.data;
+        const phase = data[7];
+        
+        // แยกส่วนดึงข้อมูลคำตอบตาม Phase ที่ทำการบันทึกไว้
+        let answers = [];
+        if (phase && (phase.includes('ห้องผ่าตัด') || phase.includes('Staff'))) {
+            answers = data.slice(13, 20); // ดึงจากคอลัมน์ N-T
+        } else {
+            answers = data.slice(9, 13);  // ดึงจากคอลัมน์ J-M
+        }
+
+        if (!editRow.classList.contains('hidden')) {
+            editRow.classList.add('hidden');
+            return;
+        }
+
+        editRow.classList.remove('hidden');
+        container.innerHTML = `<p class="text-center text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดแบบประเมิน...</p>`;
+
+        // Create a temporary card logic to render questions
+        // We reuse logic but adapt it for inline editing
+        const tempCard = document.createElement('div');
+        tempCard.className = 'patient-card p-4 bg-white rounded-xl border border-[#e6dcd5] text-left'; // Forced text-left here
+        tempCard.dataset.score = data[8]; // Initial Score
+        
+        // Mock the structure needed by renderQuestions
+        const qContainer = document.createElement('div');
+        qContainer.className = 'questions-container space-y-4';
+        tempCard.appendChild(qContainer);
+        
+        // Render Questions
+        renderQuestions(tempCard, phase);
+
+        // Fill Answers
+        // Assuming the order matches exactly. 
+        // Need to flatten the question list to iterate same as 'answers' array
+        const qItems = tempCard.querySelectorAll('.q-item');
+        
+        qItems.forEach((qItem, idx) => { 
+             const savedAns = answers[idx]; // String value from sheet
+             if(!savedAns) return;
+
+             if (savedAns === 'N/A') {
+                 qItem.querySelector('.na-checkbox').click();
+                 return;
+             }
+
+             const type = qItem.dataset.type;
+             
+             if (type === 'Choice J') {
+                 // Saved: "Sub1: Ans, Sub2: Ans"
+                 const parts = savedAns.split(', ');
+                 const subRows = qItem.querySelectorAll('.sub-q-row');
+                 
+                 parts.forEach(part => {
+                     const [label, val] = part.split(': ');
+                     // Find row with this label
+                     subRows.forEach(row => {
+                         if(row.innerText.includes(label.trim())) {
+                             const inputs = row.querySelectorAll('input[type="radio"]');
+                             inputs.forEach(inp => {
+                                 if(inp.value === val.trim()) inp.click();
+                             });
+                         }
+                     });
+                 });
+             } else if (type === 'Choice B') {
+                 // EDIT: รับข้อมูลของ Choice B กลับมา
+                 let mainVal = savedAns;
+                 if (savedAns.includes('(')) {
+                     mainVal = savedAns.split(' (')[0].trim();
+                     const details = savedAns.match(/ระบุ: (.*)\)/);
+                     if(details) {
+                         qItem.querySelector('.choice-b-reason').value = details[1];
+                     }
+                 }
+                 const inputs = qItem.querySelectorAll('input[type="radio"]');
+                 inputs.forEach(inp => {
+                     if(inp.value === mainVal) inp.click();
+                 });
+                 if (mainVal.includes("มี") && !mainVal.includes("ไม่มี")) {
+                     qItem.querySelector('.extra-input-b')?.classList.remove('hidden');
+                 }
+             } else if (type === 'Choice E') {
+                 // Saved: "Value" or "Not Compliant (Reason: ..., Position: ...)"
+                 let mainVal = savedAns;
+                 if (savedAns.includes('(')) {
+                     mainVal = savedAns.split(' (')[0].trim();
+                     // Extract details
+                     const details = savedAns.match(/ระบุ: (.*), ตำแหน่ง: (.*)\)/);
+                     if(details) {
+                         qItem.querySelector('.choice-e-reason').value = details[1];
+                         qItem.querySelector('.choice-e-pos').value = details[2];
+                     }
+                 }
+                 
+                 const inputs = qItem.querySelectorAll('input[type="radio"]');
+                 inputs.forEach(inp => {
+                     if(inp.value === mainVal) inp.click();
+                 });
+             } else if (type === 'Choice L') {
+                 // Saved: "Value [OR:x, Anaes:y, Other:z]"
+                 let mainVal = savedAns;
+                 if (savedAns.includes('[')) {
+                     mainVal = savedAns.split(' [')[0].trim();
+                     const details = savedAns.match(/OR:(.*), Anaes:(.*), Other:(.*)\]/);
+                     if(details) {
+                        qItem.querySelector('.l-or-team').value = details[1];
+                        qItem.querySelector('.l-anaes-team').value = details[2];
+                        qItem.querySelector('.l-other-team').value = details[3];
+                     }
+                 }
+                 const inputs = qItem.querySelectorAll('input[type="radio"]');
+                 inputs.forEach(inp => {
+                     if(inp.value === mainVal) inp.click();
+                 });
+             } else {
+                 // Normal Choice
+                 const inputs = qItem.querySelectorAll('input[type="radio"]');
+                 inputs.forEach(inp => {
+                     if(inp.value === savedAns) inp.click();
+                 });
+             }
+        });
+
+        // Add Save Button for Assessment
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'mt-4 flex justify-end gap-2 border-t pt-4';
+        actionsDiv.innerHTML = `
+            <button onclick="saveEditAssessment(${rowIndex})" class="px-4 py-2 bg-[#967259] text-white rounded-lg text-sm hover:bg-[#b08d74]">บันทึกผลการประเมิน</button>
+            <button onclick="document.getElementById('edit-row-${rowIndex}').classList.add('hidden')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">ปิด</button>
+        `;
+        tempCard.appendChild(actionsDiv);
+
+        container.innerHTML = '';
+        container.appendChild(tempCard);
+        
+        // Recalc score initially
+        calculateScore(tempCard);
+
+        // Update the ID for selection
+        tempCard.id = `edit-card-${rowIndex}`;
+    }
+
+    function saveEdit(rowIndex) {
+        const row = document.getElementById(`row-${rowIndex}`);
+        const oldData = JSON.parse(row.dataset.json).data;
+
+        // Gather Inputs
+        const newDate = row.querySelector('.edit-date').value;
+        const newHN = row.querySelector('.edit-hn').value;
+        const newOR = row.querySelector('.edit-orno').value;
+        const newWound = row.querySelector('.edit-wound').value;
+        const newSpec = row.querySelector('.edit-spec').value;
+
+        if(!newDate || !newHN || !newOR || !newSpec) return Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบ (รวมถึงสาขา)');
+
+        const updatedInfo = {
+            assessor: oldData[1], // Keep original assessor
+            hn: newHN,
+            opDate: newDate,
+            orNo: newOR,
+            woundType: newWound,
+            specialty: newSpec, // Add Specialty
+            phase: oldData[7],
+            score: oldData[8] // Score doesn't change here
+        };
+
+        submitUpdate(rowIndex, updatedInfo, null);
+    }
+
+    function saveEditAssessment(rowIndex) {
+        const card = document.getElementById(`edit-card-${rowIndex}`);
+        const row = document.getElementById(`row-${rowIndex}`);
+        const oldData = JSON.parse(row.dataset.json).data;
+
+        // Validation logic similar to submitData
+        let unansweredQuestion = false;
+        card.querySelectorAll('.q-item').forEach(q => {
+            const isNA = q.querySelector('.na-checkbox').checked;
+            if (isNA) return; 
+
+            const isTempExclusive = q.dataset.isTempExclusive === "true";
+            const type = q.dataset.type;
+            
+            if (type === 'Choice J') {
+               const totalSubs = q.querySelectorAll('.sub-q-row').length;
+               const checkedSubs = q.querySelectorAll('input:checked').length;
+               
+               if (isTempExclusive) {
+                  if (checkedSubs === 0) unansweredQuestion = true;
+               } else {
+                  if (checkedSubs < totalSubs) unansweredQuestion = true;
+               }
+            } else if (type === 'Choice B') {
+               const chk = q.querySelector('input:checked');
+               if (!chk) {
+                  unansweredQuestion = true;
+               } else if (chk.value.includes("มี") && !chk.value.includes("ไม่มี")) {
+                  if (!q.querySelector('.choice-b-reason').value.trim()) unansweredQuestion = true;
+               }
+            } else if (type === 'Choice E') {
+               const chk = q.querySelector('input:checked');
+               if (!chk) {
+                  unansweredQuestion = true;
+               } else if (chk.value.includes("ไม่ปฏิบัติ") || chk.value.includes("Non-compliant")) {
+                  if (!q.querySelector('.choice-e-reason').value.trim() || !q.querySelector('.choice-e-pos').value) unansweredQuestion = true;
+               }
+            } else {
+               if (!q.querySelector('input:checked')) unansweredQuestion = true;
+            }
+        });
+
+        if(unansweredQuestion) return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาตอบคำถามให้ครบ (รวมถึงเหตุผลที่ต้องระบุ)', 'warning');
+
+        // Collect Answers (Array format)
+        const answers = [];
+        card.querySelectorAll('.q-item').forEach(q => {
+          const isNA = q.querySelector('.na-checkbox').checked;
+          if (isNA) { answers.push("N/A"); return; }
+          const type = q.dataset.type;
+          
+          if (type === 'Choice J') {
+            const subs = [];
+            q.querySelectorAll('.sub-q-row').forEach(row => {
+              const subTxt = row.querySelector('span').textContent;
+              const chk = row.querySelector('input:checked');
+              subs.push(`${subTxt}: ${chk ? chk.value : '-'}`);
+            });
+            answers.push(subs.join(', '));
+          } else if (type === 'Choice B') {
+             const chk = q.querySelector('input:checked');
+             let val = chk ? chk.value : '-';
+             if (val.includes("มี") && !val.includes("ไม่มี")) {
+                const reason = q.querySelector('.choice-b-reason').value.trim();
+                val += ` (ระบุ: ${reason})`;
+             }
+             answers.push(val);
+          } else if (type === 'Choice E') {
+             const chk = q.querySelector('input:checked');
+             let val = chk ? chk.value : '-';
+             if (val.includes("ไม่ปฏิบัติ") || val.includes("Non-compliant")) {
+                const reason = q.querySelector('.choice-e-reason').value.trim();
+                const pos = q.querySelector('.choice-e-pos').value;
+                val += ` (ระบุ: ${reason}, ตำแหน่ง: ${pos})`;
+             }
+             answers.push(val);
+          } else if (type === 'Choice L') {
+             const chk = q.querySelector('input:checked');
+             let val = chk ? chk.value : '-';
+             const orT = q.querySelector('.l-or-team').value;
+             const anT = q.querySelector('.l-anaes-team').value;
+             const otT = q.querySelector('.l-other-team').value;
+             val += ` [OR:${orT}, Anaes:${anT}, Other:${otT}]`;
+             answers.push(val);
+          } else {
+             const chk = q.querySelector('input:checked');
+             answers.push(chk ? chk.value : '-');
+          }
+        });
+
+        const updatedInfo = {
+            assessor: oldData[1],
+            hn: oldData[4],
+            opDate: oldData[5],
+            orNo: oldData[2],
+            woundType: oldData[6],
+            phase: oldData[7],
+            specialty: oldData[20], // ดึง Specialty ที่เคยบันทึกไว้ในช่อง 20 ด้วย
+            score: card.dataset.score // New Score!
+        };
+
+        submitUpdate(rowIndex, updatedInfo, answers);
+    }
+
+    function submitUpdate(rowIndex, info, answers) {
+        Swal.fire({
+            title: 'กำลังบันทึก...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        google.script.run
+            .withSuccessHandler(() => {
+                Swal.fire({
+                    icon: 'success', 
+                    title: 'บันทึกสำเร็จ', 
+                    showConfirmButton: false, 
+                    timer: 1500
+                }).then(() => {
+                    // Close Search Modal or Refresh it?
+                    // Let's refresh the search by calling doSearch again with the HN
+                    doSearch(info.hn); 
+                 });
+            })
+            .withFailureHandler(e => Swal.fire('Error', e.message, 'error'))
+            .updateORData(rowIndex, info, answers);
+    }
+
+    // --- EXISTING FUNCTIONS (unchanged) ---
+    function setupUnitSearch() {
+       const inp = document.getElementById('unitSearchInput');
+       const list = document.getElementById('unitSuggestions');
+       const hiddenCode = document.getElementById('selectedUnitCode');
+       const hiddenName = document.getElementById('selectedUnitName');
+       
+       if(!inp) return;
+
+       inp.addEventListener('input', function() {
+         const v = this.value.toLowerCase().trim();
+         list.innerHTML = ''; 
+         if(!v) { list.classList.add('hidden'); return; }
+
+         const matches = GLOBAL_DATA.units.filter(u => u.code.toLowerCase().includes(v) || u.name.toLowerCase().includes(v));
+         
+         if(matches.length > 0) {
+            list.classList.remove('hidden');
+            matches.forEach(u => {
+               const li = document.createElement('li');
+               li.className = 'px-4 py-2 hover:bg-[#faf7f5] cursor-pointer text-sm border-b flex justify-between items-center group';
+               li.innerHTML = `<span class="font-semibold text-[#967259] group-hover:text-[#b08d74]">${u.code}</span><span class="text-gray-500 text-sm">${u.name}</span>`;
+               li.onclick = () => selectUnit(u);
+               list.appendChild(li);
+            });
+         } else { list.classList.add('hidden'); }
+       });
+
+       inp.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+             e.preventDefault();
+             const v = this.value.toLowerCase().trim();
+             if(!v) return;
+             let match = GLOBAL_DATA.units.find(u => u.code.toLowerCase() === v);
+             if (!match) match = GLOBAL_DATA.units.find(u => u.name.toLowerCase() === v);
+             if (!match) match = GLOBAL_DATA.units.find(u => u.code.toLowerCase().includes(v) || u.name.toLowerCase().includes(v));
+             if (match) { selectUnit(match); }
+          }
+       });
+
+       function selectUnit(u) {
+          inp.value = u.name; 
+          hiddenCode.value = u.code;
+          hiddenName.value = u.name;
+          list.classList.add('hidden');
+          list.innerHTML = '';
+          inp.classList.add('border-[#967259]', 'bg-[#faf7f5]');
+          setTimeout(() => inp.classList.remove('border-[#967259]', 'bg-[#faf7f5]'), 500);
+       }
+
+       document.addEventListener('click', e => {
+           if(!inp.contains(e.target) && !list.contains(e.target)) { list.classList.add('hidden'); }
+       });
+    }
+
+    function addPatientForm() {
+      const container = document.getElementById('patientContainer');
+      // EDIT: ถ้าเป็น joint_center หรือ cataract_center ใช้ Template เดียวกับ OR
+      const templateId = (CURRENT_MODE === 'unit') ? 'unitPatientTemplate' : 'orPatientTemplate';
+      const template = document.getElementById(templateId);
+      const clone = template.content.cloneNode(true);
+      const card = clone.querySelector('.patient-card');
+
+      // EDIT: ถ้าเป็น Joint Center (ศูนย์ข้อ) หรือ ต้อกระจก ให้ลบส่วน Specialty ออก
+      if (CURRENT_MODE === 'joint_center' || CURRENT_MODE === 'cataract_center') {
+          const specWrapper = card.querySelector('.specialty-wrapper');
+          if (specWrapper) specWrapper.remove();
+          
+          // Adjust Grid Layout to look good (revert to 4 columns)
+          const grid = card.querySelector('.grid-layout');
+          if (grid) {
+              grid.classList.remove('md:grid-cols-5');
+              grid.classList.add('md:grid-cols-4');
+          }
+      }
+
+      const idx = container.children.length + 1;
+      card.querySelector('.patient-index').textContent = `#${idx}`;
+
+      const woundSel = card.querySelector('.select-wound');
+      GLOBAL_DATA.dropdowns.woundTypes.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w; opt.textContent = w; woundSel.appendChild(opt);
+      });
+
+      // Populate Specialty Dropdown if in OR mode AND element exists
+      const specSel = card.querySelector('.select-specialty');
+      if(specSel && GLOBAL_DATA.choices.specialties) {
+          GLOBAL_DATA.choices.specialties.forEach(s => {
+             const opt = document.createElement('option');
+             opt.value = s; opt.textContent = s; specSel.appendChild(opt);
+          });
+      }
+
+      card.querySelector('.remove-patient').onclick = () => { card.remove(); updateIndices(); };
+
+      const phaseContainer = card.querySelector('.phase-options');
+      const phases = CURRENT_MODE === 'unit' ? GLOBAL_DATA.dropdowns.unitPhases : GLOBAL_DATA.dropdowns.orPhases;
+      
+      phases.forEach(p => {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'toggle-btn';
+        btn.dataset.phase = p; btn.textContent = p;
+        btn.onclick = (e) => selectPhase(e.target, card);
+        phaseContainer.appendChild(btn);
+      });
+
+      container.appendChild(card);
+    }
+
+    function updateIndices() {
+      document.querySelectorAll('.patient-card').forEach((c, i) => c.querySelector('.patient-index').textContent = `#${i+1}`);
+    }
+
+    function selectPhase(btn, card) {
+      card.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const phase = btn.dataset.phase;
+      renderQuestions(card, phase);
+    }
+
+    // --- HANDLE Choice B INPUT LOGIC ---
+    function handleChoiceBInput(wrapper, label) {
+       const extra = wrapper.querySelector('.extra-input-b');
+       // แสดงกล่องเมื่อมีคำว่า "มี" และป้องกันไม่ให้คำว่า "ไม่มี" เปิดกล่อง
+       if(label.includes("มี") && !label.includes("ไม่มี")) {
+         extra.classList.remove('hidden');
+       } else {
+         extra.classList.add('hidden');
+       }
+    }
+    // ------------------------------------
+
+    function renderQuestions(card, phase) {
+      const container = card.querySelector('.questions-container');
+      container.innerHTML = ''; container.classList.remove('hidden');
+
+      let qList = [];
+      if (CURRENT_MODE === 'unit') {
+        const isPre = phase.includes("ก่อน") || phase.includes("Pre");
+        const isPost = phase.includes("หลัง") || phase.includes("Post");
+        const isBoth = phase.includes("และ") || phase.includes("Both");
+        if(isBoth) qList = [...GLOBAL_DATA.questions.unit.preOp, ...GLOBAL_DATA.questions.unit.postOp];
+        else if(isPre) qList = GLOBAL_DATA.questions.unit.preOp;
+        else if(isPost) qList = GLOBAL_DATA.questions.unit.postOp;
+      } else {
+        const isAnaes = phase.includes("วิสัญญี") || phase.includes("Anaesthetist");
+        const isStaff = phase.includes("ห้องผ่าตัด") || phase.includes("Staff");
+        
+        if(isAnaes) {
+             qList = GLOBAL_DATA.questions.or.anaesthetist;
+        } else if(isStaff) {
+             qList = GLOBAL_DATA.questions.or.staff;
+        }
+      }
+
+      if(qList.length === 0) { container.innerHTML = '<p class="text-center text-gray-400">ไม่มีคำถาม</p>'; return; }
+
+      qList.forEach(q => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'q-item pb-4 border-b border-dashed border-[#e6dcd5] last:border-0';
+        wrapper.dataset.id = q.id;
+        wrapper.dataset.type = q.type;
+
+        const header = document.createElement('div');
+        header.className = 'flex items-start justify-between mb-2';
+        
+        const title = document.createElement('p');
+        title.className = 'font-medium flex-1';
+        title.innerHTML = `${q.text} <span class="text-red-500 text-lg ml-1">*</span>`;
+        
+        const naLabel = document.createElement('label');
+        naLabel.className = 'inline-flex items-center cursor-pointer ml-4 flex-shrink-0';
+        const naInput = document.createElement('input');
+        naInput.type = 'checkbox';
+        naInput.className = 'na-checkbox form-checkbox text-gray-400 h-5 w-5 rounded border-gray-300 focus:ring-0';
+        const naText = document.createElement('span');
+        naText.className = 'ml-1 text-sm text-gray-400 font-medium';
+        naText.textContent = 'NA';
+        
+        naLabel.appendChild(naInput);
+        naLabel.appendChild(naText);
+        
+        header.appendChild(title);
+        header.appendChild(naLabel);
+        wrapper.appendChild(header);
+
+        const isTempQuestion = q.text.includes("ควบคุมอุณหภูมิ") || q.text.includes("temperature");
+        if (isTempQuestion) {
+            wrapper.dataset.isTempExclusive = "true";
+        }
+
+        const choicesDiv = document.createElement('div');
+        choicesDiv.className = 'mt-2 choices-content transition-opacity duration-200';
+
+        naInput.addEventListener('change', (e) => {
+           toggleNA(e.target, choicesDiv, wrapper, card);
+        });
+
+        if (q.type && q.type.trim() === 'Choice J') {
+          GLOBAL_DATA.choices.subQuestionsJ.forEach((sub, sIdx) => {
+            const subRow = document.createElement('div');
+            subRow.className = 'flex flex-col sm:flex-row sm:items-center justify-between bg-white p-2 mb-2 rounded border border-gray-100 sub-q-row';
+            subRow.innerHTML = `<span class="text-sm mb-1 sm:mb-0 mr-2">• ${sub.text}</span>`;
+            
+            const subOptsDiv = document.createElement('div');
+            subOptsDiv.className = 'flex gap-2';
+            
+            let subChoices = (sub.answerType && sub.answerType.includes('D')) ? GLOBAL_DATA.choices.choiceD : GLOBAL_DATA.choices.default;
+            if(!subChoices) subChoices = GLOBAL_DATA.choices.default;
+
+            subChoices.forEach(c => {
+               if(!c.isNA) {
+                   const lbl = createRadio(c, `q_${q.id}_sub_${sIdx}_${cardIdx(card)}`, true);
+                   const inp = lbl.querySelector('input');
+                   
+                   if(isTempQuestion) {
+                      inp.addEventListener('click', () => {
+                          const allInputs = wrapper.querySelectorAll('input[type="radio"]');
+                          allInputs.forEach(other => {
+                             if(other !== inp && other.name !== inp.name) {
+                                other.checked = false;
+                                other.closest('label').classList.remove('bg-[#faf7f5]', 'border-[#967259]');
+                             }
+                          });
+                          calculateScore(card);
+                      });
+                   }
+                   subOptsDiv.appendChild(lbl);
+               }
+            });
+            subRow.appendChild(subOptsDiv);
+            choicesDiv.appendChild(subRow);
+          });
+        } else if (q.type && q.type.trim() === 'Choice E') {
+          const flex = document.createElement('div'); flex.className = 'flex flex-wrap gap-2 items-center';
+          GLOBAL_DATA.choices.choiceE.forEach(c => {
+             if(!c.isNA) {
+                 const lbl = createRadio(c, `q_${q.id}_${cardIdx(card)}`);
+                 lbl.querySelector('input').onclick = () => {
+                    handleChoiceEInput(wrapper, c.label);
+                    calculateScore(card);
+                 };
+                 flex.appendChild(lbl);
+             }
+          });
+          choicesDiv.appendChild(flex);
+          
+          const extraDiv = document.createElement('div');
+          extraDiv.className = 'extra-input hidden mt-3 p-3 bg-red-50 rounded-lg border border-red-100 animate-fade-in';
+          extraDiv.innerHTML = `
+            <p class="text-xs text-red-500 mb-1">กรุณาระบุข้อมูลเพิ่มเติม:</p>
+            <input type="text" class="choice-e-reason form-input w-full mb-2 p-2 text-sm" placeholder="ระบุ...(เหตุการณ์หรือการกระทำ)">
+            <select class="choice-e-pos form-input w-full p-2 text-sm">
+               <option value="">-- เลือกตำแหน่ง --</option>
+               ${GLOBAL_DATA.choices.positionsK.map(k => `<option value="${k}">${k}</option>`).join('')}
+            </select>
+          `;
+          choicesDiv.appendChild(extraDiv);
+
+        // EDIT: เพิ่ม Logic สำหรับ Choice B คล้าย Choice E
+        } else if (q.type && q.type.trim() === 'Choice B') {
+          const flex = document.createElement('div'); flex.className = 'flex flex-wrap gap-2 items-center';
+          GLOBAL_DATA.choices.choiceB.forEach(c => {
+             if(!c.isNA) {
+                 const lbl = createRadio(c, `q_${q.id}_${cardIdx(card)}`);
+                 lbl.querySelector('input').onclick = () => {
+                    handleChoiceBInput(wrapper, c.label);
+                    calculateScore(card);
+                 };
+                 flex.appendChild(lbl);
+             }
+          });
+          choicesDiv.appendChild(flex);
+          
+          const extraDiv = document.createElement('div');
+          extraDiv.className = 'extra-input-b hidden mt-3 p-3 bg-red-50 rounded-lg border border-red-100 animate-fade-in';
+          extraDiv.innerHTML = `
+            <p class="text-xs text-red-500 mb-1">กรุณาระบุข้อมูลเพิ่มเติม:</p>
+            <input type="text" class="choice-b-reason form-input w-full p-2 text-sm" placeholder="ระบุการติดเชื้อ...">
+          `;
+          choicesDiv.appendChild(extraDiv);
+
+        } else if (q.type && q.type.trim() === 'Choice L') {
+          const flex = document.createElement('div'); flex.className = 'flex flex-wrap gap-2 mb-3';
+          GLOBAL_DATA.choices.subQuestionsL.forEach(c => {
+             if(!c.isNA) {
+                 const lbl = createRadio(c, `q_${q.id}_${cardIdx(card)}`);
+                 lbl.querySelector('input').onclick = () => calculateScore(card);
+                 flex.appendChild(lbl);
+             }
+          });
+          choicesDiv.appendChild(flex);
+
+          const teamDiv = document.createElement('div');
+          teamDiv.className = 'grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#faf7f5] p-3 rounded-lg border border-[#e6dcd5]';
+          teamDiv.innerHTML = `
+            <div><label class="text-xs text-gray-500">ทีมห้องผ่าตัด (คน)</label><input type="number" class="l-or-team form-input w-full p-1.5 text-sm"></div>
+            <div><label class="text-xs text-gray-500">ทีมวิสัญญี (คน)</label><input type="number" class="l-anaes-team form-input w-full p-1.5 text-sm"></div>
+            <div><label class="text-xs text-gray-500">ตำแหน่งอื่น (คน)</label><input type="text" class="l-other-team form-input w-full p-1.5 text-sm" placeholder="ระบุ..."></div>
+          `;
+          choicesDiv.appendChild(teamDiv);
+
+        } else {
+          const flex = document.createElement('div'); flex.className = 'flex flex-wrap gap-2';
+          
+          let cSet = GLOBAL_DATA.choices.default;
+          // Choice B ถูกแยกไปแล้วด้านบน ถ้าเหลือ Choice C ให้ใช้ cSet ของมัน
+          if (q.type === 'Choice C') cSet = GLOBAL_DATA.choices.choiceC;
+          
+          cSet.forEach(c => {
+             if(!c.isNA) {
+                 const lbl = createRadio(c, `q_${q.id}_${cardIdx(card)}`);
+                 lbl.querySelector('input').onclick = () => calculateScore(card);
+                 flex.appendChild(lbl);
+             }
+          });
+          choicesDiv.appendChild(flex);
+        }
+
+        wrapper.appendChild(choicesDiv);
+        container.appendChild(wrapper);
+      });
+
+      calculateScore(card);
+    }
+
+    function toggleNA(checkbox, container, wrapper, card) {
+       const inputs = container.querySelectorAll('input, select');
+       if(checkbox.checked) {
+          container.classList.add('q-disabled');
+          inputs.forEach(i => { i.disabled = true; });
+          container.querySelectorAll('label').forEach(l => l.classList.remove('bg-[#faf7f5]', 'border-[#967259]'));
+          container.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+       } else {
+          container.classList.remove('q-disabled');
+          inputs.forEach(i => { i.disabled = false; });
+       }
+       calculateScore(card);
+    }
+
+    function createRadio(choice, name, isSub = false) {
+      const lbl = document.createElement('label');
+      lbl.className = 'inline-flex items-center cursor-pointer space-x-2 bg-white px-3 py-1.5 rounded-lg border border-[#e6dcd5] hover:border-[#967259] transition-all select-none';
+      
+      const inp = document.createElement('input');
+      inp.type = 'radio'; inp.name = name; inp.value = choice.label;
+      inp.dataset.score = choice.score; inp.dataset.isNa = choice.isNA;
+      if(isSub) inp.classList.add('sub-radio'); 
+      inp.className = (isSub ? 'sub-radio ' : '') + 'form-radio text-[#967259] focus:ring-[#967259]';
+      
+      inp.addEventListener('change', function() {
+        const group = document.getElementsByName(name);
+        group.forEach(r => r.closest('label').classList.remove('bg-[#faf7f5]', 'border-[#967259]'));
+        if(this.checked) this.closest('label').classList.add('bg-[#faf7f5]', 'border-[#967259]');
+      });
+
+      if(isSub) {
+         inp.addEventListener('click', (e) => {
+            const card = e.target.closest('.patient-card') || e.target.closest('[id^="edit-card"]');
+            if(card) calculateScore(card);
+         });
+      }
+
+      lbl.appendChild(inp);
+      lbl.appendChild(document.createElement('span')).textContent = choice.label;
+      lbl.querySelector('span').className = 'text-sm';
+      return lbl;
+    }
+
+    function handleChoiceEInput(wrapper, label) {
+       const extra = wrapper.querySelector('.extra-input');
+       if(label.includes("ไม่ปฏิบัติ") || label.includes("Non-compliant")) {
+         extra.classList.remove('hidden');
+       } else {
+         extra.classList.add('hidden');
+       }
+    }
+
+    function calculateScore(card) {
+      const qItems = card.querySelectorAll('.q-item');
+      let total = 0, max = 0;
+
+      qItems.forEach(q => {
+        const isNA = q.querySelector('.na-checkbox').checked;
+        if (isNA) return; 
+
+        const type = q.dataset.type;
+        const isTempExclusive = q.dataset.isTempExclusive === "true";
+        
+        if (type && type.trim() === 'Choice J') {
+           const subs = q.querySelectorAll('.sub-q-row');
+           let answeredSubCount = 0;
+           let tempScore = 0;
+           let tempMax = 0;
+
+           subs.forEach(sub => {
+              const checked = sub.querySelector('input:checked');
+              if(checked && checked.dataset.isNa !== 'true') {
+                 tempScore += parseFloat(checked.dataset.score);
+                 tempMax += 1;
+                 answeredSubCount++;
+              }
+           });
+
+           if (isTempExclusive) {
+              total += tempScore;
+              max += answeredSubCount > 0 ? 1 : 0; 
+           } else {
+              total += tempScore;
+              max += tempMax;
+           }
+
+        } else {
+           const checked = q.querySelector('input:checked:not(.sub-radio)');
+           if (checked && checked.dataset.isNa !== 'true') {
+              total += parseFloat(checked.dataset.score);
+              max += 1; 
+           }
+        }
+      });
+
+      let pct = max > 0 ? (total/max)*100 : 0;
+      card.dataset.score = pct.toFixed(2);
+    }
+
+    function cardIdx(card) {
+      if(card.id && card.id.startsWith('edit-card')) return card.id;
+      return Array.from(document.querySelectorAll('.patient-card')).indexOf(card);
+    }
+
+    function submitData() {
+      if (CURRENT_MODE === 'unit') {
+        const unitCode = document.getElementById('selectedUnitCode').value;
+        if (!unitCode) return Swal.fire({title: 'ข้อมูลไม่ครบ', text: 'กรุณาระบุหน่วยงาน', icon: 'warning', confirmButtonColor: '#967259'});
+      }
+
+      const cards = document.querySelectorAll('#patientContainer .patient-card');
+      if (cards.length === 0) return Swal.fire({title: 'ไม่มีข้อมูล', text: 'กรุณาเพิ่มข้อมูลผู้ป่วย', icon: 'warning', confirmButtonColor: '#967259'});
+
+      const patients = [];
+      let incomplete = false;
+      let unansweredQuestion = false;
+
+      cards.forEach(card => {
+        const hn = card.querySelector('.input-hn').value;
+        const date = card.querySelector('.input-date').value;
+        const wound = card.querySelector('.select-wound').value;
+        const phaseBtn = card.querySelector('.toggle-btn.active');
+        
+        if (!hn || !date || !wound || !phaseBtn) { incomplete = true; return; }
+
+        if (CURRENT_MODE === 'or') {
+           if(!card.querySelector('.input-orno').value) { incomplete = true; return; }
+           if(!card.querySelector('.select-specialty').value) { incomplete = true; return; }
+        }
+        
+        // EDIT: เก็บ OR No. สำหรับ joint_center และ cataract_center
+        if (CURRENT_MODE === 'joint_center' || CURRENT_MODE === 'cataract_center') {
+           if(!card.querySelector('.input-orno').value) { incomplete = true; return; }
+        }
+
+        // Validate Questions
+        card.querySelectorAll('.q-item').forEach(q => {
+            const isNA = q.querySelector('.na-checkbox').checked;
+            if (isNA) return; 
+
+            const isTempExclusive = q.dataset.isTempExclusive === "true";
+            const type = q.dataset.type;
+            
+            if (type === 'Choice J') {
+               const totalSubs = q.querySelectorAll('.sub-q-row').length;
+               const checkedSubs = q.querySelectorAll('input:checked').length;
+               
+               if (isTempExclusive) {
+                  if (checkedSubs === 0) unansweredQuestion = true;
+               } else {
+                  if (checkedSubs < totalSubs) unansweredQuestion = true;
+               }
+            } else if (type === 'Choice B') {
+               const chk = q.querySelector('input:checked');
+               if (!chk) {
+                  unansweredQuestion = true;
+               } else if (chk.value.includes("มี") && !chk.value.includes("ไม่มี")) {
+                  if (!q.querySelector('.choice-b-reason').value.trim()) unansweredQuestion = true;
+               }
+            } else if (type === 'Choice E') {
+               const chk = q.querySelector('input:checked');
+               if (!chk) {
+                  unansweredQuestion = true;
+               } else if (chk.value.includes("ไม่ปฏิบัติ") || chk.value.includes("Non-compliant")) {
+                  if (!q.querySelector('.choice-e-reason').value.trim() || !q.querySelector('.choice-e-pos').value) unansweredQuestion = true;
+               }
+            } else {
+               if (!q.querySelector('input:checked')) unansweredQuestion = true;
+            }
+        });
+
+        // --- Collect Answers ---
+        const answers = []; 
+        card.querySelectorAll('.q-item').forEach(q => {
+          const isNA = q.querySelector('.na-checkbox').checked;
+          if (isNA) {
+             answers.push("N/A");
+             return;
+          }
+
+          const type = q.dataset.type;
+          
+          if (type === 'Choice J') {
+            const subs = [];
+            q.querySelectorAll('.sub-q-row').forEach(row => {
+              const subTxt = row.querySelector('span').textContent;
+              const chk = row.querySelector('input:checked');
+              subs.push(`${subTxt}: ${chk ? chk.value : '-'}`);
+            });
+            answers.push(subs.join(', '));
+          } else if (type === 'Choice B') {
+             const chk = q.querySelector('input:checked');
+             let val = chk ? chk.value : '-';
+             if (val.includes("มี") && !val.includes("ไม่มี")) {
+                const reason = q.querySelector('.choice-b-reason').value.trim();
+                val += ` (ระบุ: ${reason})`;
+             }
+             answers.push(val);
+          } else if (type === 'Choice E') {
+             const chk = q.querySelector('input:checked');
+             let val = chk ? chk.value : '-';
+             if (val.includes("ไม่ปฏิบัติ") || val.includes("Non-compliant")) {
+                const reason = q.querySelector('.choice-e-reason').value.trim();
+                const pos = q.querySelector('.choice-e-pos').value;
+                val += ` (ระบุ: ${reason}, ตำแหน่ง: ${pos})`;
+             }
+             answers.push(val);
+          } else if (type === 'Choice L') {
+             const chk = q.querySelector('input:checked');
+             let val = chk ? chk.value : '-';
+             const orT = q.querySelector('.l-or-team').value;
+             const anT = q.querySelector('.l-anaes-team').value;
+             const otT = q.querySelector('.l-other-team').value;
+             val += ` [OR:${orT}, Anaes:${anT}, Other:${otT}]`;
+             answers.push(val);
+          } else {
+             const chk = q.querySelector('input:checked');
+             answers.push(chk ? chk.value : '-');
+          }
+        });
+
+        let extra = {};
+        if (CURRENT_MODE === 'or') {
+          extra.orNo = card.querySelector('.input-orno').value;
+          extra.specialty = card.querySelector('.select-specialty').value; // Get Specialty
+        }
+
+        // EDIT: เก็บ OR No. สำหรับ joint_center และ cataract_center
+        if (CURRENT_MODE === 'joint_center' || CURRENT_MODE === 'cataract_center') {
+          extra.orNo = card.querySelector('.input-orno').value;
+        }
+
+        patients.push({
+          hn, opDate: date, woundType: wound,
+          phase: phaseBtn.dataset.phase,
+          score: card.dataset.score,
+          answers, ...extra
+        });
+      });
+
+      if (incomplete) return Swal.fire({title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณากรอกข้อมูลทั่วไป (HN, วันที่, แผล, ระยะ, OR No., สาขา) ให้ครบถ้วน', icon: 'warning', confirmButtonColor: '#967259'});
+      if (unansweredQuestion) return Swal.fire({title: 'ตอบคำถามไม่ครบ', text: 'กรุณาตอบแบบประเมินให้ครบทุกข้อ (รวมถึงเหตุผลที่ต้องระบุ)', icon: 'warning', confirmButtonColor: '#967259'});
+
+      const btn = document.querySelector('button[onclick="submitData()"]');
+      const oldTxt = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บันทึก...'; btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler((res) => {
+           Swal.fire({
+             title: 'บันทึกสำเร็จ!',
+             text: 'ข้อมูลถูกส่งเข้าระบบเรียบร้อยแล้ว\nจำนวนเคสที่ประเมินเดือน' + res.monthName + ': ' + res.monthlyCount + ' เคส',
+             icon: 'success',
+             confirmButtonText: 'ตกลง',
+             confirmButtonColor: '#967259',
+             background: '#ffffff',
+             customClass: { popup: 'rounded-3xl' }
+           }).then((result) => {
+             if (result.isConfirmed) {
+                resetApp();
+             }
+           });
+           
+           if(typeof google.script.run.isMock !== 'undefined') {
+               btn.innerHTML = oldTxt; btn.disabled = false;
+           }
+        })
+        .withFailureHandler(e => {
+           Swal.fire({title: 'เกิดข้อผิดพลาด', text: e.message, icon: 'error', confirmButtonColor: '#d33'});
+           btn.innerHTML = oldTxt; btn.disabled = false; 
+         })
+        .submitForm({
+            mode: CURRENT_MODE,
+            assessorType: document.querySelector('#initToggleContainer .bg-\\[\\#967259\\]').textContent,
+            unitCode: document.getElementById('selectedUnitCode').value,
+            unitName: document.getElementById('selectedUnitName').value,
+            patients 
+         });
+    }
+
+    function resetApp() {
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('unitInfoSection').classList.add('hidden');
+      document.getElementById('step1').classList.remove('hidden');
+      
+      const step1Btns = document.getElementById('initToggleContainer').children;
+      for(let b of step1Btns) {
+         b.classList.remove('bg-[#967259]', 'text-white', 'border-[#967259]');
+         b.classList.add('border-[#e6dcd5]', 'text-[#967259]');
+      }
+      
+      CURRENT_MODE = "";
+      document.getElementById('patientContainer').innerHTML = '';
+      document.getElementById('orActionSection').classList.add('hidden');
+      
+      document.getElementById('unitSearchInput').value = '';
+      document.getElementById('selectedUnitCode').value = '';
+      document.getElementById('selectedUnitName').value = '';
+      
+      const btn = document.querySelector('button[onclick="submitData()"]');
+      btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>ส่งข้อมูลแบบประเมิน';
+      btn.disabled = false;
+        
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
