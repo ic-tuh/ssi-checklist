@@ -2,6 +2,11 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f2ec">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SSI Audit">
   <title>แบบประเมิน SSI Prevention</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -40,6 +45,39 @@
     .search-table th { background-color: #f3ece6; color: #967259; padding: 10px; text-align: left; border-bottom: 2px solid #e6dcd5; font-weight: 600; white-space: nowrap; position: sticky; top: 0; z-index: 20; }
     .search-table td { padding: 10px; border-bottom: 1px solid #eee; color: #555; vertical-align: top; }
     .search-table tr:hover { background-color: #faf7f5; }
+
+    /* ===== ปรับสำหรับมือถือ ===== */
+    html { -webkit-text-size-adjust: 100%; }
+    body { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+    button, label, input[type="radio"], input[type="checkbox"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    /* ช่องวันที่บน iPhone ไม่ยุบเมื่อยังว่าง */
+    input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 2.75rem; display: block; }
+    input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+    select.form-input { min-height: 2.75rem; }
+
+    @media (max-width: 767px) {
+      /* ฟอนต์ 16px ป้องกัน iPhone ซูมหน้าจออัตโนมัติเวลากดช่องกรอก */
+      input[type="text"], input[type="number"], input[type="date"], select, textarea, .edit-input { font-size: 16px !important; }
+      /* ปุ่มเลือกระยะ/แบบประเมิน: เรียงเต็มความกว้าง ตัดบรรทัดได้ */
+      .toggle-container { display: flex; flex-direction: column; width: 100%; gap: 4px; }
+      .toggle-btn { white-space: normal; width: 100%; padding: 12px 14px; font-size: 0.95rem; margin-bottom: 0; }
+      /* ปุ่มเลือกแบบประเมินหน้าแรก */
+      #initToggleContainer { flex-direction: column; gap: 10px; }
+      #initToggleContainer > button { width: 100%; font-size: 1rem; padding: 14px 16px; }
+      /* ตัวเลือกคำตอบ: ปุ่มใหญ่ขึ้น กดง่าย */
+      .choices-content label { padding: 10px 14px; flex: 1 1 auto; justify-content: flex-start; }
+      .choices-content input[type="radio"] { width: 1.15rem; height: 1.15rem; }
+      .na-checkbox { width: 1.4rem !important; height: 1.4rem !important; }
+      .sub-q-row .flex.gap-2 { flex-wrap: wrap; width: 100%; }
+      /* หัวการ์ดไม่ชนปุ่มถังขยะ */
+      .patient-card h3 { padding-right: 2.5rem; font-size: 1.15rem; }
+      .glass-card:hover { box-shadow: 0 10px 40px -10px rgba(150, 114, 89, 0.15); }
+      /* ป๊อปอัปเต็มจอมากขึ้น */
+      div:where(.swal2-container) { padding: 8px !important; }
+      div:where(.swal2-container) div:where(.swal2-popup) { width: 100% !important; max-width: 100% !important; padding: 1rem 0.5rem !important; }
+      .search-table th, .search-table td { padding: 8px !important; font-size: 0.85rem; }
+      #step1 h2 { font-size: 1.35rem; }
+    }
   </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -50,13 +88,13 @@
   </div>
 
   <div class="max-w-4xl mx-auto space-y-6">
-    <div class="text-center mb-8">
-      <h1 class="text-3xl md:text-4xl font-bold mb-2"><i class="fa-solid fa-notes-medical mr-2"></i>SSI Prevention Audit</h1>
+    <div class="text-center mb-4 md:mb-8">
+      <h1 class="text-2xl md:text-4xl font-bold mb-2"><i class="fa-solid fa-notes-medical mr-2"></i>SSI Prevention Audit</h1>
       <p class="opacity-75">ระบบประเมินการปฏิบัติตามแนวทางการป้องกันการติดเชื้อ</p>
     </div>
 
     <!-- Step 1: Initial Selection -->
-    <div id="step1" class="glass-card p-8 text-center animate-fade-in">
+    <div id="step1" class="glass-card p-5 md:p-8 text-center animate-fade-in">
       <h2 class="text-2xl font-bold mb-6">เลือกแบบประเมินสำหรับ</h2>
       <div class="flex justify-center flex-wrap gap-4" id="initToggleContainer"></div>
     </div>
@@ -65,14 +103,14 @@
     <div id="step2" class="hidden space-y-6">
       
       <!-- Top Actions Bar for OR/Joint Center Mode -->
-      <div id="orActionSection" class="flex justify-end hidden">
+      <div id="orActionSection" class="flex justify-center md:justify-end hidden">
          <button onclick="openSearchModal()" class="px-5 py-2 rounded-full border-2 border-[#967259] text-[#967259] bg-white hover:bg-[#967259] hover:text-white transition-all font-medium text-sm shadow-sm flex items-center">
             <i class="fa-solid fa-magnifying-glass mr-2"></i>แก้ไขข้อมูล (ค้นหา HN)
          </button>
       </div>
 
       <!-- Part 1: Unit Info (Only for Unit Mode) -->
-      <div id="unitInfoSection" class="glass-card p-6 hidden relative z-30">
+      <div id="unitInfoSection" class="glass-card p-4 md:p-6 hidden relative z-30">
         <h3 class="text-xl font-bold mb-4 border-b border-[#e6dcd5] pb-2"><i class="fa-solid fa-hospital-user mr-2"></i>ส่วนที่ 1: ข้อมูลหน่วยงาน</h3>
         <div class="relative">
           <label class="block text-sm font-medium mb-1">หน่วยงาน (กรอกรหัส หรือ ชื่อ)</label>
@@ -91,7 +129,7 @@
       <div id="patientContainer" class="space-y-6"></div>
 
       <div class="flex justify-center">
-        <button onclick="addPatientForm()" class="px-6 py-3 rounded-full border-2 border-[#967259] text-[#967259] hover:bg-[#967259] hover:text-white transition-colors font-medium">
+        <button onclick="addPatientForm()" class="w-full md:w-auto px-6 py-3 rounded-full border-2 border-[#967259] text-[#967259] hover:bg-[#967259] hover:text-white transition-colors font-medium">
           <i class="fa-solid fa-plus mr-2"></i>เพิ่มข้อมูลผู้ป่วย
         </button>
       </div>
@@ -107,7 +145,7 @@
 
   <!-- Template: UNIT Patient Form -->
   <template id="unitPatientTemplate">
-    <div class="patient-card glass-card p-6 relative animate-fade-in-up" data-mode="unit">
+    <div class="patient-card glass-card p-4 md:p-6 relative animate-fade-in-up" data-mode="unit">
       <button class="remove-patient absolute top-4 right-4 text-red-400 hover:text-red-600 transition"><i class="fa-solid fa-trash-can text-lg"></i></button>
       <h3 class="text-xl font-bold mb-4 text-[#967259]"><i class="fa-solid fa-user-injured mr-2"></i>ผู้ป่วย <span class="patient-index"></span></h3>
       
@@ -122,13 +160,13 @@
         <div class="toggle-container phase-options"></div>
       </div>
 
-      <div class="questions-container space-y-4 bg-[#fdfbf9] p-4 rounded-xl border border-[#efe8e1] hidden"></div>
+      <div class="questions-container space-y-4 bg-[#fdfbf9] p-3 md:p-4 rounded-xl border border-[#efe8e1] hidden"></div>
     </div>
   </template>
 
   <!-- Template: OR Patient Form -->
   <template id="orPatientTemplate">
-    <div class="patient-card glass-card p-6 relative animate-fade-in-up" data-mode="or">
+    <div class="patient-card glass-card p-4 md:p-6 relative animate-fade-in-up" data-mode="or">
       <button class="remove-patient absolute top-4 right-4 text-red-400 hover:text-red-600 transition"><i class="fa-solid fa-trash-can text-lg"></i></button>
       <h3 class="text-xl font-bold mb-4 text-[#967259]"><i class="fa-solid fa-procedures mr-2"></i>Case ห้องผ่าตัด <span class="patient-index"></span></h3>
       
@@ -147,7 +185,7 @@
         <div class="toggle-container phase-options"></div>
       </div>
 
-      <div class="questions-container space-y-4 bg-[#fdfbf9] p-4 rounded-xl border border-[#efe8e1] hidden"></div>
+      <div class="questions-container space-y-4 bg-[#fdfbf9] p-3 md:p-4 rounded-xl border border-[#efe8e1] hidden"></div>
     </div>
   </template>
 
